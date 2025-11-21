@@ -1,0 +1,94 @@
+#acces_service.py
+from flask import abort
+from services.historique_action_service import HistoriqueActionService
+from modeles.acces import Acces
+from config import db
+
+class AccesService:
+    @staticmethod
+    def get_all():
+        return [a.to_dict() for a in Acces.query.all()]
+
+    @staticmethod
+    def get_by_id(acces_id):
+        a = Acces.query.get(acces_id)
+        return a.to_dict() if a else None
+
+    @staticmethod
+    def create(data):
+        # Vérifier s'il existe déjà un accès avec ce login et plateforme_id
+        doublon = Acces.query.filter_by(
+            login=data['login'],
+            plateforme_id=data['plateforme_id']
+        ).first()
+
+        if doublon:
+            abort(409, description="Un accès avec ce login et cette plateforme existe déjà.")
+
+        a = Acces(
+            login=data['login'],
+            name=data['name'],
+            mail=data['mail'],
+            action=data['action'],
+            num_ticket=data.get('num_ticket'),
+            plateforme_id=data['plateforme_id'],
+            utilisateur_id=data['utilisateur_id']
+        )
+        db.session.add(a)
+        db.session.commit()
+
+        # 🔹 Historiser la création
+        HistoriqueActionService.enregistrer_action(
+            utilisateur_id=a.utilisateur_id,
+            type_action="Création",
+            description=f"Création d'un accès {a.id} pour {a.name} ({a.mail})"
+        )
+
+        return a.to_dict()
+
+    @staticmethod
+    def update(acces_id, data):
+        a = Acces.query.get(acces_id)
+        if not a:
+            return None
+
+        old_values = a.to_dict()  # Sauvegarde des anciennes valeurs pour l'historique
+
+        a.login = data.get('login', a.login)
+        a.name = data.get('name', a.name)
+        a.mail = data.get('mail', a.mail)
+        a.action = data.get('action', a.action)
+        a.num_ticket = data.get('num_ticket', a.num_ticket)
+        db.session.commit()
+
+        # 🔹 Historiser la modification
+        description = f"Modification de l'accès {a.id} :\n"
+        for key, new_value in data.items():
+            old_value = old_values.get(key, None)
+            if old_value != new_value:
+                description += f" - {key}: {old_value} → {new_value}\n"
+
+        HistoriqueActionService.enregistrer_action(
+            utilisateur_id=a.utilisateur_id,
+            type_action="Modification",
+            description=description
+        )
+
+        return a.to_dict()
+
+    @staticmethod
+    def delete(acces_id):
+        a = Acces.query.get(acces_id)
+        if not a:
+            return None
+
+        # 🔹 Historiser la suppression
+        HistoriqueActionService.enregistrer_action(
+            utilisateur_id=a.utilisateur_id,
+            type_action="Suppression",
+            description=f"Suppression de l'accès {a.id} ({a.name}, {a.mail})"
+        )
+
+        db.session.delete(a)
+        db.session.commit()
+        return True
