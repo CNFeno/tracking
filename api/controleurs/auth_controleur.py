@@ -16,11 +16,13 @@ class AuthControleur(Resource):
         if not user or not user.actif:
             return {"message": "Utilisateur introuvable ou inactif"}, 404
 
+        ldap_result = {}
         if user.auth_type.name == "LOCAL":
             if not user.check_password(password):
                 return {"message": "Mot de passe incorrect"}, 401
         elif user.auth_type.name == "LDAP":
-            if not ldap_authenticate(userId, password):
+            ldap_result = ldap_authenticate(userId, password)
+            if not ldap_result.get("authenticated"):
                 return {"message": "Authentification LDAP échouée"}, 401
             
         additional_claims = {
@@ -30,7 +32,10 @@ class AuthControleur(Resource):
         }
 
         token = create_access_token(identity=str(user.id), additional_claims=additional_claims)
+        user_data = user.to_dict()
+        user_data["profile_photo"] = ldap_result.get("profile_photo")
+
         return jsonify({
             "access_token": token,
-            "user": user.to_dict()
+            "user": user_data
         })

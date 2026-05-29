@@ -34,15 +34,16 @@ class HistoriqueActionService:
         return True
     
     @staticmethod
-    def enregistrer_action(utilisateur_id, type_action, description):
+    def enregistrer_action(utilisateur_id, type_action, description, date_action=None, commit=True):
         action = HistoriqueAction(
             utilisateur_id=utilisateur_id,
             type_action=type_action,
             description=description,
-            date_action=datetime.now()
+            date_action=date_action or datetime.now()
         )
         db.session.add(action)
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return action.to_dict()
     
     @staticmethod

@@ -54,3 +54,16 @@ class AccesControleur(Resource):
     def delete(self, acces_id):
         success = AccesService.delete(acces_id)
         return jsonify({"message": "Accès supprimé avec succès"}) if success else ({"message": "Accès non trouvé"}, 404)
+
+
+class AccesImportControleur(Resource):
+    @jwt_required()
+    def post(self):
+        data = request.json or {}
+        records = data.get('records', data if isinstance(data, list) else [])
+
+        if not isinstance(records, list):
+            return {"message": "Le payload d'import doit contenir une liste records."}, 400
+
+        result = AccesService.import_batch(records)
+        return jsonify(result)

@@ -27,7 +27,7 @@ def create_app():
 
     db.init_app(app)
     jwt.init_app(app)  # 🔹 Initialisation du JWTManager
-    api = Api(app, prefix='/accesstrack/api')
+    api = Api(app, prefix='/omit-suivi/accesstrack/api')
     #api = Api(app)
     CORS(app, origins="http://localhost:3000")  # Autoriser React
     #CORS(app, supports_credentials=True)
